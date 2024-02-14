@@ -7,32 +7,32 @@ KeyBoard* KeyBoard::instance() {
 
 void KeyBoard::update() {
 	//ó‘Ô‚ğæ“¾
-	char tmpKey[256];
-	GetHitKeyStateAll(tmpKey);
+	char tmp_key[256];
+	GetHitKeyStateAll(tmp_key);
 	for (int i = 0 ; i < 256; i++) {
-		if (tmpKey[i] == 1) {
-			keyState[i]++;
+		if (tmp_key[i] == 1) {
+			key_state_[i]++;
 		}
 		else {
-			keyState[i] = 0;
+			key_state_[i] = 0;
 		}
 	}
 }
 
-bool KeyBoard::hitNow(const int key) {
-	if (keyState[key] == 1) {
+bool KeyBoard::isHitNow(const int key) {
+	if (key_state_[key] == 1) {
 		return true;
 	}
 	return false;
 }
 
-bool KeyBoard::getState(const int key) {
-	if (keyState[key] > 0) {
+bool KeyBoard::isPush(const int key) {
+	if (key_state_[key] > 0) {
 		return true;
 	}
 	return false;
 }
 
 int KeyBoard::getFrame(const int key) {
-	return keyState[key];
+	return key_state_[key];
 }

@@ -5,7 +5,7 @@
 
 class KeyBoard {
 private:
-	int keyState[256];
+	int key_state_[256];
 
 	//コンストラクタ、コピーコンストラクタ、代入演算子をprivate
 	KeyBoard(){};
@@ -13,8 +13,10 @@ private:
 	KeyBoard& operator=(const KeyBoard&) {};
 public:
 	static KeyBoard* instance();
+
 	void update();
-	bool hitNow(const int);
-	bool getState(const int);
+
+	bool isHitNow(const int);
+	bool isPush(const int);
 	int getFrame(const int);
 };

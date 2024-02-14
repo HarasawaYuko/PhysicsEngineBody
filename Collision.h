@@ -6,10 +6,10 @@
 
 class Collision {
 private:
-	int contactNum;
-	float friction;//–€CŒW”
-	float e = 0.8f;
-	std::vector<ContactPoint> contactPoints;
+	int contact_num_;
+	float friction_;//–€CŒW”
+	float e_ = 0.8f;
+	std::vector<ContactPoint> contactpoints_;
 
 	std::pair<Object*, Object*> pair;//‚¢‚ç‚È‚¢
 	uint16_t key;//‚¢‚ç‚È‚¢

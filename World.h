@@ -3,30 +3,40 @@
 
 #include "Object.h"
 #include "Pair.h"
+#include "Constant.h"
 
 //物理シミュレーションクラス
 
 class World {
 private:
-	const float gravity = 200.8f;//重力加速度
-	float TIME_STEP;
-	uint16_t totalNum;//通算で追加したオブジェクトの数　65536以上になったら一旦リセットする必要あり
-	int objNum;//world内にあるオブジェクトの数
-	int SIZE_X;
-	int SIZE_Y;
+	const float GRAVITY = Constant::GRAVITY;//重力加速度
+	const float TIME_STEP;
+	//シミュレーションワールドのサイズ
+	const int WORLD_SIZE_X;
+	const int WORLD_SIZE_Y;
 
-	void applyForce();
+	uint16_t total_obj_num_;//通算で追加したオブジェクトの数　65536以上になったら一旦リセットする必要あり
+	int obj_num_;//world内にあるオブジェクトの数
+
+	void applyGravity();
 	void detectCollision();
 	void solveConstraints();
-	void integrate();
+	void updatePosition();
+
+	void detectBroard();
+
+	void sortObj();
+	
 public:
+	//コンストラクタ
 	World(float timeStep = 1.f/(float)FPS , const int x = WIN_SIZE_X, const int y = WIN_SIZE_Y);
-	std::vector<Object*> objects;
-	std::vector<Pair> pairs;
 	void initialize();
-	void physicsSimulate();
-	uint16_t add(Object*);
-	void Draw(const int , const int) const;
-	Object* getObj(uint16_t id)const;
 	void finalize();
+	void physicsSimulate();
+	uint16_t addObj(Object*);
+	Object* searchObjById(uint16_t id)const;
+	void Draw(const int, const int) const;
+
+	std::vector<Object*> objects_;
+	std::vector<Pair> pairs_;
 };

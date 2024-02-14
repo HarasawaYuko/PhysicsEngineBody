@@ -40,7 +40,7 @@ void Button::update() {
 	isOn = false;
 	if (isIn(x, y, width, height)) {
 		isOn = true;
-		if (Mouse::instance()->getClickNow(LEFT_CLICK)) {
+		if (Mouse::instance()->isClickNow(LEFT_CLICK)) {
 			push = true;
 		}
 	}
@@ -115,7 +115,7 @@ void SlideBar::update(bool*click) {
 	on = false;
 	if (isIn(x , y - size ,length , y+size*2)) {
 		on = true;
-		if (Mouse::instance()->getClick(LEFT_CLICK)) {
+		if (Mouse::instance()->isClick(LEFT_CLICK)) {
 			*click = true;
 			selectX = (int)Mouse::instance()->getX();
 		}
@@ -145,35 +145,35 @@ int DrawBoxP(const Vec2 cen ,const int cen_r_x , const int cen_r_y ,const double
 	//画像の中心座標を取得
 	double exRateX = (double)w/(double)size_x;
 	double exRateY = (double)h/(double)size_y;
-	return DrawRotaGraph3((int)cen.x , WIN_SIZE_Y - (int)cen.y , cen_r_x , cen_r_y ,exRateX , exRateY , angle , graph , transFlag , turnFlag);
+	return DrawRotaGraph3((int)cen.x_ , WIN_SIZE_Y - (int)cen.y_ , cen_r_x , cen_r_y ,exRateX , exRateY , angle , graph , transFlag , turnFlag);
 }
 
 //y軸を反転させた三角形の描画関数
 int DrawTriP(const Vec2& p0, const Vec2& p1, const Vec2& p2,const unsigned int color , const int fill ,const float thick) {
-	return DrawTriangleAA(p0.x , WIN_SIZE_Y -  p0.y , p1.x , WIN_SIZE_Y - p1.y ,p2.x ,  WIN_SIZE_Y - p2.y , color , fill ,thick);
+	return DrawTriangleAA(p0.x_ , WIN_SIZE_Y -  p0.y_ , p1.x_ , WIN_SIZE_Y - p1.y_ ,p2.x_ ,  WIN_SIZE_Y - p2.y_ , color , fill ,thick);
 }
 
 //線分の描画
 int DrawSegment(const Segment& line, const unsigned int color) {
-	return DrawLineAA(line.start.x , WIN_SIZE_Y - line.start.y , line.end.x , WIN_SIZE_Y - line.end.y , color , 3.f);
+	return DrawLineAA(line.start_.x_ , WIN_SIZE_Y - line.start_.y_ , line.end_.x_ , WIN_SIZE_Y - line.end_.y_ , color , 3.f);
 }
 
 //線分の描画　二点を受け取るオーバーロード
 int DrawSegment(const Vec2& s, const Vec2& e, const unsigned int color) {
-	return DrawLineAA(s.x , WIN_SIZE_Y - s.y , e.x , WIN_SIZE_Y - e.y , color ,3.f);
+	return DrawLineAA(s.x_ , WIN_SIZE_Y - s.y_ , e.x_ , WIN_SIZE_Y - e.y_ , color ,3.f);
 }
 
 //線分の描画　二点を受け取るオーバーロード
 int DrawSegment(const Vec2& s, const Vec2& e, const unsigned int color , const float thick) {
-	return DrawLineAA(s.x, WIN_SIZE_Y - s.y, e.x, WIN_SIZE_Y - e.y, color, thick);
+	return DrawLineAA(s.x_, WIN_SIZE_Y - s.y_, e.x_, WIN_SIZE_Y - e.y_, color, thick);
 }
 
 int DrawPoint(const Vec2& v, const unsigned int color) {
-	return DrawCircle((int)v.x , WIN_SIZE_Y - (int)v.y , 5 , color);
+	return DrawCircle((int)v.x_ , WIN_SIZE_Y - (int)v.y_ , 5 , color);
 }
 
 int DrawStrP(const Vec2& p , const std::string str , const unsigned int color) {
-	return DrawString((int)p.x ,WIN_SIZE_Y - (int)p.y , str.c_str(), color);
+	return DrawString((int)p.x_ ,WIN_SIZE_Y - (int)p.y_ , str.c_str(), color);
 }
 
 std::string FtoStr(const float val) {

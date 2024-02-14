@@ -3,25 +3,22 @@
 #include "World.h"
 #include "Solver.h"
 
+//物理シミュレーション本体
+
 World::World(float timeStep , const int x , const int y)
-{
-	SIZE_X = x;
-	SIZE_Y = y;
-	TIME_STEP = timeStep;
-	objNum = 0;
-}
+	:WORLD_SIZE_X(x) , WORLD_SIZE_Y(y) , TIME_STEP(timeStep)
+{}
 
 void World::initialize() {
 	//初期化
-	objNum = 0;
-	Solver::initialize(TIME_STEP);
-	pairs.clear();
-	objects.clear();
+	obj_num_ = 0;
+	pairs_.clear();
+	objects_.clear();
 }
 
 void World::physicsSimulate() {
 	//外力を加える
-	applyForce();
+	applyGravity();
 
 	//衝突検知
 	detectCollision();
@@ -30,147 +27,96 @@ void World::physicsSimulate() {
 	solveConstraints();
 	
 	//位置の更新
-	integrate();
+	updatePosition();
 }
 
-uint16_t World::add(Object* obj) {
-	objects.push_back(obj);
-	objNum++;
-	//ユニークなidの割り当て
-	totalNum++;
-	obj->setId(totalNum);
+uint16_t World::addObj(Object* obj) {
+	objects_.push_back(obj);
+	obj_num_++;
+	total_obj_num_++;
+	obj->setTotalId(total_obj_num_);
+
 	//オブジェクト種類によってソート
-	std::sort(objects.begin(), objects.end() , [](const Object* a, const Object* b) {
-		return (uint16_t)a->getType() < (uint16_t)b->getType();
-		});
+	sortObj();
 	//インデックスの振り直し
-	for (int i = 0; i < objects.size(); i++) {
-		objects[i]->setIndex(i);
+	for (int i = 0; i < objects_.size(); i++) {
+		objects_[i]->setIndex(i);
 	}
-	return obj->getId();
+
+	return obj->getTotalId();
 }
 
-/***private***/
 //力を加える
-void World::applyForce() {
+void World::applyGravity() {
 	//重力加速度を計算
-	float acc = -gravity * TIME_STEP;
-	for (Object* obj : objects) {
-		obj->addV(Vec2(0, acc));
+	float acc = -GRAVITY * TIME_STEP;
+	for (Object* obj : objects_) {
+		obj->addVel(Vec2(0, acc));
 	}
 }
 
 //衝突検知
 void World::detectCollision() {
 	//ブロードフェーズ
-	std::vector<Pair> nowPairs;//検出されたペア
-	for (int i = 0; i < objNum; i++) {
-		for (int j = i + 1; j < objNum; j++) {
-			//バウンディングボックスによる判定
-			if (Detect::broard(objects[i], objects[j])) {
-				//見つかったらペアを作成
-				nowPairs.emplace_back(objects[i] , objects[j]);
-				nowPairs.back().setType(New);
-			}
-		}
-	}
-	//前のリストと比較してTypeを設定
-	for (int i = 0; i < nowPairs.size(); i++) {
-		for (int j = 0; j < pairs.size();j++) {
-			//同じ種類が検出されたら
-			if (nowPairs[i].getKey() == pairs[j].getKey()) {
-				nowPairs[i] = pairs[j];
-				nowPairs[i].setType(Keep);
-			}
-		}
-	}
-	//ペアの配列を更新
-	this->pairs = nowPairs;
-	//以前の衝突点の状況を確認し、更新する
-	for (int i = 0; i < pairs.size();i++) {
-		pairs[i].refreshCp();
-	}
+	detectBroard();
 
-
-//ナローフェーズ
-	std::vector<uint32_t> erase;
-	for (int i = 0; i < pairs.size(); i++) {
-		const Pair& pair = pairs[i];
+	//ナローフェーズ
+	for (auto it = pairs_.begin(); it != pairs_.end();) {
+		const Pair& pair = *it;
 		float depth;//貫通深度
-		Vec2 n;//衝突法線ベクトル
-		Vec2 coord[2];//衝突座標
-		Vec2 coord_[2];//衝突座標（辺上）
+		Vec2 n_vec;//衝突法線ベクトル
+		Vec2 contact_coord_same[2];//衝突座標
+		Vec2 contact_coord_edge[2];//衝突座標（辺上）
 		//衝突した種類で場合分け
-		switch (pair.getKind()) {
-		case CONVEX_CONVEX:
-			if (Detect::convex_convex(pair.getObj0(), pair.getObj1(), &depth, &n, coord ,coord_)) {
-				//衝突していたら衝突情報を記録
-				ContactPoint cp;
-				cp.depth = depth;
-				cp.normal = n;
-				cp.pointA = coord[0];
-				cp.pointB = coord[1];
-				cp.pointA_ = coord_[0];
-				cp.pointB_ = coord_[1];
-				cp.constraint->accumImpulse = 0.f;
-				pair.getCol()->addCp(cp);
-				pair.getObj0()->setTouch(true);
-				pair.getObj1()->setTouch(true);
+		switch (pair.getCombi()) {
+		case CONVEX_CONVEX: {
+			//ダウンキャスト
+			Convex* con1 = static_cast<Convex*>(pair.getObj0());
+			Convex* con2 = static_cast<Convex*>(pair.getObj1());
+			if (Detect::narrow(con1, con2, &depth, &n_vec, contact_coord_same, contact_coord_edge)) {
+				it++;
 			}
 			else {
-				//衝突していなければ
-				erase.push_back(pair.getKey());//キーを記録
+				it = pairs_.erase(it);
+				continue;
 			}
+		}
 			break;
-		case CIRCLE_CIRCLE:
-			if (Detect::circle_circle(pair.getObj0(), pair.getObj1(), &depth, &n, coord, coord_)) {
-				//衝突していたら衝突情報を記録
-				ContactPoint cp;
-				cp.depth = depth;
-				cp.normal = n;
-				cp.pointA = coord[0];
-				cp.pointB = coord[1];
-				cp.pointA_ = coord_[0];
-				cp.pointB_ = coord_[1];
-				cp.constraint->accumImpulse = 0.f;
-				pair.getCol()->addCp(cp);
-				pair.getObj0()->setTouch(true);
-				pair.getObj1()->setTouch(true);
-			}
+		case CIRCLE_CIRCLE: {
+			//ダウンキャスト
+			Circle* cir1 = static_cast<Circle*>(pair.getObj0());
+			Circle* cir2 = static_cast<Circle*>(pair.getObj1());
+			if (Detect::narrow(cir1, cir2, &depth, &n_vec, contact_coord_same, contact_coord_edge))
+				it++;
 			else {
-				//衝突していなければ
-				erase.push_back(pair.getKey());//キーを記録
+				it = pairs_.erase(it);
+				continue;
 			}
+		}
 			break;
-		case CIRCLE_CONVEX:
-			if (Detect::circle_convex(pair.getObj0(), pair.getObj1(), &depth, &n, coord, coord_)) {
-				//衝突していたら衝突情報を記録
-				ContactPoint cp;
-				cp.depth = depth;
-				cp.normal = n;
-				cp.pointA = coord[0];
-				cp.pointB = coord[1];
-				cp.pointA_ = coord_[0];
-				cp.pointB_ = coord_[1];
-				cp.constraint->accumImpulse = 0.f;
-				pair.getCol()->addCp(cp);
-				pair.getObj0()->setTouch(true);
-				pair.getObj1()->setTouch(true);
-			}
+		case CIRCLE_CONVEX: {
+			//ダウンキャスト
+			Circle* cir = static_cast<Circle*>(pair.getObj0());
+			Convex* con = static_cast<Convex*>(pair.getObj1());
+			if (Detect::narrow(cir, con, &depth, &n_vec, contact_coord_same, contact_coord_edge))
+				it++;
 			else {
-				//衝突していなければ
-				erase.push_back(pair.getKey());//キーを記録
+				it = pairs_.erase(it);
+				continue;
 			}
 			break;
 		}
-	}
-	//衝突していなかったペアを削除
-	for (int i = 0; i < erase.size(); i++) {
-		for (int j = 0; j < pairs.size(); j++) {
-			if (pairs[j].getKey() == erase[i]) {
-				pairs.erase(pairs.begin() + j);
-			}
 		}
+		//衝突していたら衝突情報を記録
+		ContactPoint cp;
+		cp.depth_ = depth;
+		cp.normal_vec_ = n_vec;
+		cp.pointA_ = contact_coord_same[0];
+		cp.pointB_ = contact_coord_same[1];
+		cp.pointA_edge_ = contact_coord_edge[0];
+		cp.pointB_edge_ = contact_coord_edge[1];
+
+		pair.getCol()->addCp(cp);
 	}
 }
 
@@ -182,17 +128,17 @@ void World::solveConstraints() {
 }
 
 //位置の更新
-void World::integrate() {
-	auto itr = objects.begin();
+void World::updatePosition() {
+	auto itr = objects_.begin();
 	bool isErase = false;//オブジェクトが削除されたか
-	while (itr != objects.end())
+	while (itr != objects_.end())
 	{
 		(*itr)->updatePos(TIME_STEP);
- 		if (!(*itr)->isValid(SIZE_X , SIZE_Y))
+ 		if (!(*itr)->isValid(WORLD_SIZE_X , WORLD_SIZE_Y))
 		{
-			itr = objects.erase(itr);
+			itr = objects_.erase(itr);
 			isErase = true;
-			objNum--;
+			obj_num_--;
 		}
 		else
 		{
@@ -202,22 +148,22 @@ void World::integrate() {
 	//削除があったら
 	if (isErase) {
 		//インデックスの振り直し
-		for (int i = 0; i < objects.size(); i++) {
-			objects[i]->setIndex(i);
+		for (int i = 0; i < objects_.size(); i++) {
+			objects_[i]->setIndex(i);
 		}
 	}
 }
 
 //描画　scroll 分ずらして描画
 void World::Draw(const int x_scroll, const int y_scroll)const {
-	for (auto& obj : objects) {
+	for (auto& obj : objects_) {
 		obj->Draw(x_scroll , y_scroll);
 	}
 }
 
-Object* World::getObj(uint16_t id)const {
-	for (auto& obj : objects) {
-		if (obj->getId() == id) {
+Object* World::searchObjById(uint16_t id)const {
+	for (auto& obj : objects_) {
+		if (obj->getTotalId() == id) {
 			return obj;
 		}
 	}
@@ -225,9 +171,47 @@ Object* World::getObj(uint16_t id)const {
 }
 
 void World::finalize() {
-	for (auto& obj : objects) {
+	for (auto& obj : objects_) {
 		delete obj;
 	}
-	objects.clear();
-	pairs.clear();
+	objects_.clear();
+	pairs_.clear();
+}
+
+void World::sortObj() {
+	std::sort(objects_.begin(), objects_.end(), [](const Object* a, const Object* b) {
+		return (uint16_t)a->getType() < (uint16_t)b->getType();
+		});
+}
+
+//ブロードフェーズ
+void World::detectBroard() {
+	std::vector<Pair> currentPairs;//検出されたペア
+	for (int i = 0; i < obj_num_; i++) {
+		for (int j = i + 1; j < obj_num_; j++) {
+			//バウンディングボックスによる判定
+			if (Detect::broard(objects_[i], objects_[j])) {
+				//見つかったらペアを作成
+				currentPairs.emplace_back(objects_[i], objects_[j]);
+				currentPairs.back().setType(New);
+			}
+		}
+	}
+	//前のリストと比較してTypeを設定
+	for (int cur_i = 0; cur_i < currentPairs.size(); cur_i++) {
+		for (int pre_i = 0; pre_i < pairs_.size(); pre_i++) {
+			//同じ種類が検出されたら
+			if (currentPairs[cur_i].getKey() == pairs_[pre_i].getKey()) {
+				currentPairs[cur_i] = pairs_[pre_i];
+				currentPairs[cur_i].setType(Keep);
+			}
+		}
+	}
+	//ペアの配列を更新
+	this->pairs_ = currentPairs;
+
+	//以前の衝突点の状況を確認し、更新する
+	for (Pair& pair : pairs_) {
+		pair.checkContactPoints();
+	}
 }

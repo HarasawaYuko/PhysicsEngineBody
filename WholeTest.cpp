@@ -28,7 +28,7 @@ void WholeTest::Initialize() {
 	Convex* con = getCon(2);
 	con->setColor(GetColor(rand_->getI(0, 155), rand_->getI(0, 155), rand_->getI(0, 155)));
 	//床を設置
-	world.add(con);
+	world.addObj(con);
 
 	//三角形を設置
 	con = getCon(5);
@@ -37,7 +37,7 @@ void WholeTest::Initialize() {
 	//con->setAngV(Pi/1.f);
 	con->setV(Vec2(0 , 0));
 	con->move(Vec2(400.f , 470.f));
-	world.add(con);
+	world.addObj(con);
 
 	//三角形を設置
 	con = getCon(7);
@@ -45,7 +45,7 @@ void WholeTest::Initialize() {
 	//con->setAngV(Pi/1.f);
 	con->setV(Vec2(0, 0));
 	//con->move(Vec2(300, 50));
-	world.add(con);
+	world.addObj(con);
 }
 
 //円の並進運動
@@ -54,54 +54,54 @@ void WholeTest::Update() {
 	KeyBoard::instance()->update();
 	Mouse::instance()->update();
 	//シーン切り替え
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_RIGHT)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_RIGHT)) {
 		m_sceneChanger->ChangeScene(Scene_Game);
 	}
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_LEFT)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_LEFT)) {
 		m_sceneChanger->ChangeScene(Scene_TEST_Detect);
 	}
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_SPACE)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_SPACE)) {
 		move = !move;
 	}
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_R)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_R)) {
 		Finalize();
 		Initialize();
 	}
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_S)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_S)) {
 		makeCon = !makeCon;
 	}
 	if (makeCon) {
-		if (Mouse::instance()->getClickNow(LEFT_CLICK)) {
+		if (Mouse::instance()->isClickNow(LEFT_CLICK)) {
 			//凸包の点を追加
 			points.emplace_back(Mouse::instance()->getX(), Mouse::instance()->getY());
 		}
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_RETURN) && points.size() >= 3) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_RETURN) && points.size() >= 3) {
 			Convex* con = new Convex(points, 0.f, 0.f, 0.f, 0.f, true);
 			con->setColor(GetColor(rand_->getI(0, 150), rand_->getI(0, 150), rand_->getI(0, 150)));
-			world.add(con);
+			world.addObj(con);
 			points.clear();
 		}
 	}
 	else {
-		if (Mouse::instance()->getClickNow(LEFT_CLICK)) {
+		if (Mouse::instance()->isClickNow(LEFT_CLICK)) {
 			cirCenter = Vec2(Mouse::instance()->getX(), Mouse::instance()->getY());
 		}
-		if (Mouse::instance()->getClickNow(RIGHT_CLICK)) {
+		if (Mouse::instance()->isClickNow(RIGHT_CLICK)) {
 			cirEdge = Vec2(Mouse::instance()->getX(), Mouse::instance()->getY());
 			r = cirCenter.distance(cirEdge);
 		}
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_RETURN)) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_RETURN)) {
 			Circle* cir = new Circle(cirCenter, r, Vec2(), true);
 			cir->setColor(GetColor(rand_->getI(0, 150), rand_->getI(0 ,150), rand_->getI(0, 150)));
-			world.add(cir);
+			world.addObj(cir);
 			points.clear();
 		}
 	}
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_A)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_A)) {
 		points.clear();
 	}
   	if(move)world.physicsSimulate();
-	if (!move && Mouse::instance()->getClickNow(RIGHT_CLICK)) {
+	if (!move && Mouse::instance()->isClickNow(RIGHT_CLICK)) {
 		world.physicsSimulate();
 	}
 }
@@ -111,10 +111,10 @@ void WholeTest::Draw() {
 	DrawString(0, 0, "WholeTest", COLOR_BLACK);
 	SetFontSize(20);
 	DrawString(640 , 23 , "LeftClick->point追加\nC->凸包追加\nA->point削除" , COLOR_BLACK);
-	for (auto& obj : world.objects) {
+	for (auto& obj : world.objects_) {
 		obj->DrawEdge();
 		//obj->getBbox().Draw();
-		DrawPoint(obj->getC() ,COLOR_GREEN);
+		DrawPoint(obj->getCenter() ,COLOR_GREEN);
 	}
 	/*for (int i = 0; i < world.pairs.size();i++) {
 		printfDx("ペア\n");
@@ -150,8 +150,8 @@ void WholeTest::Draw() {
 }
 
 void WholeTest::Finalize() {
-	for (int i = 0; i < world.objects.size(); i++) {
-		delete world.objects[i];
+	for (int i = 0; i < world.objects_.size(); i++) {
+		delete world.objects_[i];
 	}
 }
 

@@ -17,7 +17,7 @@ static bool make = false;
 //“Ê•ï‰ñ“]
 static bool rotation = false;
 static Vec2 vel;
-static float angV = Pi/2;
+static float angV = kPi/2;
 static float dot;
 
 ObjectTest::ObjectTest(SceneChanger* changer)
@@ -35,16 +35,16 @@ void ObjectTest::Update() {
 	KeyBoard::instance()->update();
 	Mouse::instance()->update();
 
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_P)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_P)) {
 		mode++;
 	}
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_M)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_M)) {
 		mode--;
 	}
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_LEFT)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_LEFT)) {
 		m_sceneChanger->ChangeScene(Scene_Result);
 	}
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_RIGHT)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_RIGHT)) {
 		m_sceneChanger->ChangeScene(Scene_TEST_Detect);
 	}
 
@@ -52,18 +52,18 @@ void ObjectTest::Update() {
 	switch (mode) {
 	case 0:
 		//“Ê•ï‚Ìì¬
-		if (Mouse::instance()->getClickNow(LEFT_CLICK)) {
+		if (Mouse::instance()->isClickNow(LEFT_CLICK)) {
 			points.emplace_back(Mouse::instance()->getX(), Mouse::instance()->getY());
 		}
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_L)) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_L)) {
 			points.clear();
 		}
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_A)) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_A)) {
 			delete convex;
 			make = false;
 			points.clear();
 		}
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_RETURN) && points.size() >= 3) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_RETURN) && points.size() >= 3) {
 			delete convex;
 			convex = new Convex(points);
 			convex->setColor(GetColor(rand->getI(0, 255), rand->getI(0, 255), rand->getI(0, 255)));
@@ -72,33 +72,33 @@ void ObjectTest::Update() {
 		}
 		break;
 	case 1:
-		if (Mouse::instance()->getClickNow(LEFT_CLICK)) {
+		if (Mouse::instance()->isClickNow(LEFT_CLICK)) {
 			points.emplace_back(Mouse::instance()->getX(), Mouse::instance()->getY());
 		}
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_L)) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_L)) {
 			points.clear();
 		}
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_A)) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_A)) {
 			delete convex;
 			make = false;
 			rotation = false;
 			points.clear();
 		}
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_RETURN) && points.size() >= 3) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_RETURN) && points.size() >= 3) {
 			delete convex;
 			convex = new Convex(points,0,0,0,0,true);
 			convex->setColor(GetColor(rand->getI(0, 255), rand->getI(0, 255), rand->getI(0, 255)));
 			points.clear();
-			((Object*)convex)->setAngV(angV);
+			((Object*)convex)->setAngVRad(angV);
 			make = true;
 		}
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_R)) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_R)) {
 			rotation = !rotation;
 		}
 		if (rotation) {
 			convex->updatePos(0.1f);
-			vel = convex->getCirV(convex->getPointL(0));
-			dot = (convex->getPointW(0)-convex->getC()).dot(vel);
+			vel = convex->rotationVelocityVec(convex->getPointL(0));
+			dot = (convex->getPointW(0)-convex->getCenter()).dot(vel);
 		}
 		break;
 	}
@@ -118,8 +118,8 @@ void ObjectTest::Draw() {
 		//“Ê•ï‚Ì•`‰æ
 		if (make) {
 			convex->DrawEdge();
-			DrawFormatString(0, 80, COLOR_RED, "Šµ«ƒeƒ“ƒ\ƒ‹:%f", convex->getI());
-			DrawFormatString(0, 110, COLOR_RED, "Ž¿—Ê:%f", convex->getM());
+			DrawFormatString(0, 80, COLOR_RED, "Šµ«ƒeƒ“ƒ\ƒ‹:%f", convex->getIne());
+			DrawFormatString(0, 110, COLOR_RED, "Ž¿—Ê:%f", convex->getMass());
 		}
 		break;
 	case 1:
@@ -131,7 +131,7 @@ void ObjectTest::Draw() {
 		//“Ê•ï‚Ì•`‰æ
 		if (make) {
 			convex->DrawEdge();
-			DrawFormatString(0, 80, COLOR_RED, "Šp‘¬“x rad:%f fre:%f", convex->getAngV() , getDegree(convex->getAngV()));
+			DrawFormatString(0, 80, COLOR_RED, "Šp‘¬“x rad:%f fre:%f", convex->getAngVelRad() , DegToRad(convex->getAngVelRad()));
 			DrawFormatString(0, 110, COLOR_RED, "“àÏ %f", dot);
 			DrawFormatString(0, 140, COLOR_BLACK, "‘å‚«‚³ %f", vel.norm());
 			//printfDx("%f \n", convex->getPointL(0).toString().c_str());
@@ -139,7 +139,7 @@ void ObjectTest::Draw() {
 			//‘¬“xƒxƒNƒgƒ‹‚Ì•`‰æ
 			Segment vSeg = Segment(convex->getPointW(0) , (convex->getPointW(0)+vel));
 			DrawSegment(vSeg, COLOR_RED);
-			DrawSegment(Segment(convex->getC() , convex->getPointW(0)), COLOR_BLACK);
+			DrawSegment(Segment(convex->getCenter() , convex->getPointW(0)), COLOR_BLACK);
 		}
 		break;
 	}

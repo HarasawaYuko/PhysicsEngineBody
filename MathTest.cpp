@@ -51,88 +51,88 @@ void MathTest::Update() {
 	KeyBoard::instance()->update();
 	Mouse::instance()->update();
 
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_S)) {
-		line.start = Vec2();
-		line.end = Vec2();
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_S)) {
+		line.start_ = Vec2();
+		line.end_ = Vec2();
 	}
 	
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_P)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_P)) {
 		mode++;
 	}
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_M)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_M)) {
 		mode--;
 	}
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_LEFT)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_LEFT)) {
 		m_sceneChanger->ChangeScene(Scene_TEST_Detect);
 	}
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_RIGHT)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_RIGHT)) {
 		m_sceneChanger->ChangeScene(Scene_TEST_Constraint);
 	}
 
 	switch (mode) {
 	case 0://点と線分の距離
-		if (Mouse::instance()->getClickNow(LEFT_CLICK)) {
+		if (Mouse::instance()->isClickNow(LEFT_CLICK)) {
 			if (start) {
-				line.start.set(Mouse::instance()->getX(), Mouse::instance()->getY());
+				line.start_.set(Mouse::instance()->getX(), Mouse::instance()->getY());
 			}
 			else {
-				line.end.set(Mouse::instance()->getX(), Mouse::instance()->getY());
+				line.end_.set(Mouse::instance()->getX(), Mouse::instance()->getY());
 			}
 			start = !start;
 		}
-		else if (Mouse::instance()->getClickNow(RIGHT_CLICK)) {
+		else if (Mouse::instance()->isClickNow(RIGHT_CLICK)) {
 			point.set(Mouse::instance()->getX(), Mouse::instance()->getY());
 		}
 		{
-			if (KeyBoard::instance()->hitNow(KEY_INPUT_D)) {
-				dis = getDistance(point, line, &pattern);
-				Vec2 edgeVec = (line.end - line.start).normalize();
-				Vec2 StoP = point - line.start;
+			if (KeyBoard::instance()->isHitNow(KEY_INPUT_D)) {
+				dis = distanceSegPoint(point, line);
+				Vec2 edgeVec = (line.end_ - line.start_).normalize();
+				Vec2 StoP = point - line.start_;
 				//始点からの距離を求める
 				float dis_ = StoP.dot(edgeVec);
-				contactPoint = line.start + (edgeVec * dis_);
+				contactPoint = line.start_ + (edgeVec * dis_);
 			}
 		}
 		break;
 		//なす角
 	case 1:
-		if (Mouse::instance()->getClickNow(LEFT_CLICK)) {
+		if (Mouse::instance()->isClickNow(LEFT_CLICK)) {
 			
 			p0.set(Mouse::instance()->getX(), Mouse::instance()->getY());
 		}
-		else if (Mouse::instance()->getClickNow(RIGHT_CLICK)) {
+		else if (Mouse::instance()->isClickNow(RIGHT_CLICK)) {
 			p1.set(Mouse::instance()->getX(), Mouse::instance()->getY());
 		}
-		theta = getDegree(getTheta(center , p0 , p1));
+		theta = DegToRad(calAngle(center , p0 , p1));
 		break;
 	case 2:
-		if (Mouse::instance()->getClickNow(LEFT_CLICK)) {
+		if (Mouse::instance()->isClickNow(LEFT_CLICK)) {
 			points.emplace_back(Mouse::instance()->getX(), Mouse::instance()->getY());
 		}
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_L)) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_L)) {
 			delete convex;
 			make = false;
 			points.clear();
 		}
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_RETURN)) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_RETURN)) {
 			convex = new Convex(points);
 			make = true;
 		}
 		break;
 	case 3:
 		//行列
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_RETURN)) {
-			mat1->matrix[0][0] = 1.f;
-			mat1->matrix[0][1] = 2.f;
-			mat1->matrix[1][0] = 3.f;
-			mat1->matrix[1][1] = 4.f;
-			mat2->matrix[0][0] = 3.f;
-			mat2->matrix[0][1] = 2.f;
-			mat2->matrix[1][0] = 5.f;
-			mat2->matrix[1][1] = 6.f;
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_RETURN)) {
+			mat1->matrix_[0][0] = 1.f;
+			mat1->matrix_[0][1] = 2.f;
+			mat1->matrix_[1][0] = 3.f;
+			mat1->matrix_[1][1] = 4.f;
+			mat2->matrix_[0][0] = 3.f;
+			mat2->matrix_[0][1] = 2.f;
+			mat2->matrix_[1][0] = 5.f;
+			mat2->matrix_[1][1] = 6.f;
 			pro = (*mat1)+(*mat2);
 		}
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_D)) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_D)) {
 			delete matrix;
 		}
 	}
@@ -171,10 +171,10 @@ void MathTest::Draw() {
 		}
 		if (make) {
 			convex->Draw();
-			DrawPoint(convex->getC(), COLOR_ORANGE);
+			DrawPoint(convex->getCenter(), COLOR_ORANGE);
 			for (int i = 0; i < convex->getPointNum(); i++) {
 				Vec2 p = convex->getPointW(i);
-				DrawFormatString((int)p.x, WIN_SIZE_Y - (int)p.y, COLOR_BLUE, "%d", i);
+				DrawFormatString((int)p.x_, WIN_SIZE_Y - (int)p.y_, COLOR_BLUE, "%d", i);
 			}
 		}
 		break;
@@ -191,7 +191,7 @@ void MathTest::Draw() {
 }
 
 void MathTest::Finalize() {
-	for (Object* obj : world.objects) {
+	for (Object* obj : world.objects_) {
 		delete obj;
 	}
 }

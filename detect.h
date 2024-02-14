@@ -1,12 +1,15 @@
 #pragma once
 #include "Object.h"
+#include "Convex.h"
+#include "Circle.h"
 
 namespace Detect {
 	//ブロードフェーズ
 	bool broard(const Object* ,const Object*);
 
-	//ナローフェーズ
-	bool circle_circle(Object*, Object*, float*, Vec2*, Vec2* , Vec2*);
-	bool convex_convex(Object*, Object*, float* depth, Vec2* n, Vec2* coord , Vec2* coord_);
-	bool circle_convex(Object* , Object* , float* depth , Vec2* n , Vec2* coord , Vec2* coord_);
+	//ナローフェーズ 図形によってオーバーロード
+	bool narrow(Convex* , Convex* , float* , Vec2* , Vec2* , Vec2* );
+	bool narrow(Circle* , Convex* , float* , Vec2* , Vec2* , Vec2* );
+	bool narrow(Circle* , Circle* , float* , Vec2* , Vec2* , Vec2* );
+
 }

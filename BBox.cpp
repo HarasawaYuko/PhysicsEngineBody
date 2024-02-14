@@ -2,8 +2,11 @@
 #include "UIMaterial.h"
 
 void BBox::Draw() const{
-	DrawSegment(point , point + Vec2(0 , height) ,COLOR_BLACK);
-	DrawSegment(point, point + Vec2(width, 0), COLOR_BLACK);
-	DrawSegment(point + Vec2(0 , height), point + Vec2(width, height), COLOR_BLACK);
-	DrawSegment(point + Vec2(width , 0), point + Vec2(width, height), COLOR_BLACK);
+	const Vec2 upper_left  = origin_ + Vec2(0.f   , height_);
+	const Vec2 lower_right = origin_ + Vec2(width_ ,    0.f);
+	const Vec2 upper_right = origin_ + Vec2(width_ , height_);
+	DrawSegment(origin_      , upper_left  , COLOR_BLACK);
+	DrawSegment(origin_      , lower_right , COLOR_BLACK);
+	DrawSegment(upper_left   , upper_right , COLOR_BLACK);
+	DrawSegment(upper_right  , lower_right , COLOR_BLACK);
 }

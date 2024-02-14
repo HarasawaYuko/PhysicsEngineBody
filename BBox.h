@@ -5,9 +5,9 @@
 //バウンディングボックス
 
 struct BBox {
-	float height;//高さ
-	float width;//幅
-	Vec2 point;//左下の点
+	float height_;
+	float width_;
+	Vec2 origin_;//左下の点
 
 	void Draw()const;
 };

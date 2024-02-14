@@ -40,31 +40,31 @@ void DetectTest::Update() {
 	KeyBoard::instance()->update();
 	Mouse::instance()->update();
 
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_P)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_P)) {
 		/*mode++;
 		points.clear();*/
 	}
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_M)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_M)) {
 		/*mode--;
 		points.clear();*/
 	}
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_LEFT)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_LEFT)) {
 		m_sceneChanger->ChangeScene(Scene_TEST_Object);
 	}
-	if (KeyBoard::instance()->hitNow(KEY_INPUT_RIGHT)) {
+	if (KeyBoard::instance()->isHitNow(KEY_INPUT_RIGHT)) {
 		m_sceneChanger->ChangeScene(Scene_TEST_Math);
 	}
 	Rand* rand = Rand::instance();
 	switch (mode) {
 	case 0:
 		//作成図形の変更(Switch)
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_S)) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_S)) {
 			makeCon = !makeCon;
 		}
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_L)) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_L)) {
 			points.clear();
 		}
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_A)) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_A)) {
 			cirCenter = Vec2();
 			r = 0.f;
 			points.clear();
@@ -73,10 +73,10 @@ void DetectTest::Update() {
 		}
 		//凸包の作成
 		if (makeCon) {
-			if (Mouse::instance()->getClickNow(LEFT_CLICK)) {
+			if (Mouse::instance()->isClickNow(LEFT_CLICK)) {
 				points.emplace_back(Mouse::instance()->getX(), Mouse::instance()->getY());
 			}
-			if (KeyBoard::instance()->hitNow(KEY_INPUT_RETURN) && points.size() >= 3) {
+			if (KeyBoard::instance()->isHitNow(KEY_INPUT_RETURN) && points.size() >= 3) {
 				Convex* con = new Convex(points);
 				objects.emplace_back(con);
 				objects.back()->setColor(GetColor(rand->getI(0, 150), rand->getI(0, 150), rand->getI(0, 150)));
@@ -85,21 +85,21 @@ void DetectTest::Update() {
 		}
 		//円作成
 		else {
-			if (Mouse::instance()->getClickNow(LEFT_CLICK)) {
+			if (Mouse::instance()->isClickNow(LEFT_CLICK)) {
 				cirCenter = Vec2(Mouse::instance()->getX(), Mouse::instance()->getY());
 			}
-			if (Mouse::instance()->getClickNow(RIGHT_CLICK)) {
+			if (Mouse::instance()->isClickNow(RIGHT_CLICK)) {
 				cirEdge = Vec2(Mouse::instance()->getX(), Mouse::instance()->getY());
 				r = cirCenter.distance(cirEdge);
 			}
-			if (KeyBoard::instance()->hitNow(KEY_INPUT_RETURN)) {
+			if (KeyBoard::instance()->isHitNow(KEY_INPUT_RETURN)) {
 				Circle* cir = new Circle(cirCenter , r , Vec2() , false);
 				objects.emplace_back(cir);
 				objects.back()->setColor(GetColor(rand->getI(0 ,150), rand->getI(0, 150), rand->getI(0, 150)));
 				points.clear();
 			}
 		}
-		if (KeyBoard::instance()->hitNow(KEY_INPUT_D)) {
+		if (KeyBoard::instance()->isHitNow(KEY_INPUT_D)) {
 			for (int i = 0; i < objects.size(); i++) {
 				for (int j = i + 1; j < objects.size(); j++) {
 					bool result = false;
@@ -108,28 +108,39 @@ void DetectTest::Update() {
 					Vec2 coord[2];
 					Vec2 coord_[2];
 					switch (objects[i]->getType() | objects[j]->getType()) {
-					case Kind::CIRCLE_CIRCLE:
-						result = Detect::circle_circle(objects[i], objects[j], &d, &n, coord, coord_);
+					case Combi::CIRCLE_CIRCLE:{
+						//ダウンキャスト
+						Circle* cir1 = static_cast<Circle*>(objects[0]);
+						Circle* cir2 = static_cast<Circle*>(objects[1]);
+					
+						result = Detect::narrow(cir1, cir2, &d, &n, coord, coord_);
+					}
 						break;
-					case Kind::CIRCLE_CONVEX:
-						result = Detect::circle_convex(objects[i], objects[j], &d, &n, coord, coord_);
+					case Combi::CIRCLE_CONVEX: {
+						Circle* cir = static_cast<Circle*>(objects[0]);
+						Convex* con = static_cast<Convex*>(objects[1]);
+						result = Detect::narrow(cir, con, &d, &n, coord, coord_);
+					}
 						break;
-					case Kind::CONVEX_CONVEX:
-						result = Detect::convex_convex(objects[i], objects[j], &d, &n, coord, coord_);
+					case Combi::CONVEX_CONVEX: {
+						Convex* con1 = static_cast<Convex*>(objects[0]);
+						Convex* con2 = static_cast<Convex*>(objects[1]);
+						result = Detect::narrow(con1, con2, &d, &n, coord, coord_);
+					}
 						break;
 					}
 					if (result) {
 						ContactPoint cp;
-						cp.depth = d;
-						cp.pointA = coord[0];
-						cp.pointB = coord[1];
-						cp.pointA_ = coord_[0];
-						cp.pointB_ = coord_[1];
-						cp.normal = n;
+						cp.depth_ = d;
+						cp.pointA_ = coord[0];
+						cp.pointB_ = coord[1];
+						cp.pointA_edge_ = coord_[0];
+						cp.pointB_edge_ = coord_[1];
+						cp.normal_vec_ = n;
 						Collision col = Collision(objects[i], objects[j]);
 						col.addCp(cp);
-						contactP[0] = LtoW(cp.pointA, objects[0]->getC(), objects[0]->getAngle());
-						contactP[1] = LtoW(cp.pointB, objects[1]->getC(), objects[1]->getAngle());
+						contactP[0] = LtoW(cp.pointA_, objects[0]->getCenter(), objects[0]->getAngleRad());
+						contactP[1] = LtoW(cp.pointB_, objects[1]->getCenter(), objects[1]->getAngleRad());
 						collisions.push_back(col);
 					}
 				}
@@ -181,16 +192,18 @@ void DetectTest::Draw() {
 		if (collisions.size() > 0) {
 			DrawString(0 , 100 , "Detect!" ,COLOR_RED);
 			Collision col = collisions[0];
-			DrawStrP(col.getObj1()->getC() , "A" , COLOR_BLACK);
-			DrawStrP(col.getObj2()->getC(), "B", COLOR_BLACK);
+			DrawStrP(col.getObj1()->getCenter() , "A" , COLOR_BLACK);
+			DrawStrP(col.getObj2()->getCenter(), "B", COLOR_BLACK);
 			//衝突点を取得
 			ContactPoint cp = col.getCp(0);
 			//貫通深度を描画
-			DrawFormatString(0, 150, COLOR_BLACK, "貫通深度:%f", cp.depth);
-			DrawFormatString(0, 180, COLOR_BLACK, "法線ベクトル:%s", cp.normal.toString().c_str());
+			DrawFormatString(0, 150, COLOR_BLACK, "貫通深度:%f", cp.depth_);
+			DrawFormatString(0, 180, COLOR_BLACK, "法線ベクトル:%s", cp.normal_vec_.toString().c_str());
 			//衝突点を取得
-			Vec2 pA = LtoW(cp.pointA_ , col.getObj1()->getC() , 0);
-			Vec2 pB = LtoW(cp.pointB_ , col.getObj2()->getC() , 0);
+			Vec2 pA = LtoW(cp.pointA_edge_ , col.getObj1()->getCenter() , 0);
+			Vec2 pB = LtoW(cp.pointB_edge_ , col.getObj2()->getCenter() , 0);
+			DrawStrP(Vec2(550 , 510) , pA.toString() , COLOR_BLACK);
+			DrawStrP(Vec2(550 , 490), pB.toString(), COLOR_BLACK);
 			//衝突点を描画
 			DrawPoint(pA, COLOR_YELLOW);
 			SetFontSize(18);
@@ -199,7 +212,7 @@ void DetectTest::Draw() {
 			DrawStrP(pB, "B" , COLOR_YELLOW);
 			//法線ベクトルの描画
 			SetFontSize(20);
-			Vec2 n = cp.normal * cp.depth;
+			Vec2 n = cp.normal_vec_ * cp.depth_;
 			n = n + pB;
 			DrawSegment(Segment(n  , pB)  , COLOR_RED);
 		}

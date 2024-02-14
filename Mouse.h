@@ -14,11 +14,11 @@ enum clickCode {
 class Mouse {
 private:
 	//位置
-	int posX = 0;
-	int posY = 0;
-	int wheel = 0;
+	int pos_x_ = 0;
+	int pos_y_ = 0;
+	int wheel_ = 0;
 	//クリック状態
-	int mouseInput[INPUT_NUM] = {};
+	int mous_iInput_[INPUT_NUM] = {};
 	//コンストラクタ、代入演算子をprivateに
 	Mouse() {};
 	Mouse(const Mouse&) {}
@@ -27,8 +27,9 @@ private:
 public:
 	static Mouse* instance();
 	void update();
-	bool getClick(clickCode);
-	bool getClickNow(clickCode);
+
+	bool isClick(clickCode);
+	bool isClickNow(clickCode);
 	float getX();
 	float getY();
 	int getWheel();

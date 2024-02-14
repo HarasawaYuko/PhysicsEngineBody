@@ -44,7 +44,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     while ( ProcessMessage() == 0 && ClearDrawScreen() == 0) {
         fpsControl.Update();
         sceneMgr.Update();
-        //fpsControl.Draw();
         sceneMgr.Draw();
         ScreenFlip();
         fpsControl.Wait();

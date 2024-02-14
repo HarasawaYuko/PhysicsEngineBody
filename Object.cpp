@@ -1,142 +1,137 @@
 #include "Object.h"
 #include "Constant.h"
 
-float Object::getM() {
-	return mass;
-}
-
-void Object::setMass(const float m) {
-	mass = m;
-}
-
-Vec2 Object::getC()const {
-	return center;
-}
-
-void Object::setC(const Vec2 c) {
-	center = c;
-}
-
-Vec2 Object::getV()const{
-	return velocity;
-}
-
-void Object::setV(const Vec2 v) {
-	velocity = v;
-}
-
-void Object::setAngle(const float ang) {
-	angle = ang;
-}
-
-void Object::setAngV(const float ang_v) {
-	angle_v = ang_v;
-}
-
-void Object::updateAngle(const float step) {
-	angle += (angle_v * step);
-}
-
-float Object::getAngle()const {
-	return angle;
-}
-
-float Object::getAngV()const {
-	return angle_v;
-}
-
-bool Object::isActive()const {
-	return active;
-}
-
-void Object::addV(const Vec2 acc) {
-	if (!active) {
-		return;
-	}
-	velocity = acc + velocity;
-}
-
-void Object::addVang(const float acc) {
-	if (!active)
-	{
-		return;
-	}
-	angle_v += acc;
-}
-
-int Object::getIndex()const {
-	return index;
-}
-
-void Object::setIndex(const int i) {
-	index = i;
-}
-
-uint16_t Object::getId() const{
-	return id;
-}
-
-void Object::setId(const uint16_t i) {
-	id = i;
-}
-
-void Object::setFri(const float fri) {
-	friction = fri;
-}
-
-float Object::getFri()const {
-	return friction;
-}
-
-void Object::setE(const float e_) {
-	e = e_;
-}
-
-float Object::getE()const {
-	return e;
-}
-
-Type Object::getType()const{
-	return type;
-}
-
-const BBox& Object::getBbox()const{
-	return bbox;
-}
-
 //コンストラクタ
-Object::Object(Vec2 v ,Type type ,float mass, Color color , bool act , float ang , float ang_v ) 
-	:velocity(v) ,  type(type),color(color) ,mass(mass),active(act) , angle(ang), angle_v(ang_v),touch(false)
-{
-	e = Constant::RESTITUTION;
+Object::Object(Vec2 cen , Vec2 v, Type type, float mass,float fri , Color color, bool act, float ang, float ang_v)
+	:center_(cen) , velocity_(v), type_(type), color_(color), mass_(mass),friction_(fri), is_active_(act), angle_rad_(ang), angle_velocity_rad_(ang_v), e_(Constant::RESTITUTION)
+{}
+
+//移動、変形
+void Object::rotation(const float ang_rad) {
+	angle_rad_ = ang_rad;
 }
 
-void Object::setColor(Color c) {
-	this->color = c;
+void Object::addVel(const Vec2 acc) {
+	if (is_active_) {
+		velocity_ = acc + velocity_;
+	}
 }
 
-unsigned int Object::getColor() const{
-	return color;
-}
-
-//慣性テンソルの取得
-float Object::getI()const {
-	return inertiaTensor;
+void Object::addVelAng(const float acc) {
+	if (is_active_){
+		angle_velocity_rad_ += acc;
+	}
 }
 
 //円運動の速度を取得　point ローカル座標
 //return ワールド座標での速度
-Vec2 Object::getCirV(const Vec2& point)const {
+Vec2 Object::rotationVelocityVec(const Vec2& point_local)const {
 	//大きさを取得 v = rω
-	float length = point.norm() * angle_v;
-	Vec2 result = point.normal().normalize() * length;
-	return result.rotation(angle);
+	float speed = point_local.norm() * angle_velocity_rad_;
+	//速度に変換
+	Vec2 result = point_local.normalCCW().normalize() * speed;
+	//ワールド座標に戻して返す
+	return result.rotationCCW(angle_rad_);
 }
 
-bool Object::isTouch()const {
-	return touch;
+//ゲッター
+const Vec2& Object::getCenter()const {
+	return center_;
 }
 
-void Object::setTouch(const bool t) {
-	touch = t;
+const Vec2& Object::getVelocity()const {
+	return velocity_;
+}
+
+const float& Object::getMass() {
+	return mass_;
+}
+
+const float& Object::getAngleRad()const {
+	return angle_rad_;
+}
+
+const float& Object::getAngVelRad()const {
+	return angle_velocity_rad_;
+}
+
+const float& Object::getIne()const {
+	return inertiatensor_;
+}
+
+const float& Object::getFri()const {
+	return friction_;
+}
+
+const float& Object::getE()const {
+	return e_;
+}
+
+const Type& Object::getType()const {
+	return type_;
+}
+
+const uint16_t& Object::getTotalId() const {
+	return id_total_;
+}
+
+const int& Object::getIndex()const {
+	return index_;
+}
+
+const BBox& Object::getBbox()const {
+	return bbox_;
+}
+
+const bool& Object::isActive()const {
+	return is_active_;
+}
+
+const Color& Object::getColor() const {
+	return color_;
+}
+
+//セッター
+void Object::setC(const Vec2 c) {
+	center_ = c;
+}
+
+void Object::setV(const Vec2 v) {
+	velocity_ = v;
+}
+
+void Object::setMass(const float m) {
+	mass_ = m;
+}
+
+void Object::setAngleRad(const float ang) {
+	angle_rad_ = ang;
+}
+
+void Object::setAngVRad(const float ang_v) {
+	angle_velocity_rad_ = ang_v;
+}
+
+void Object::setFri(const float fri) {
+	friction_ = fri;
+}
+
+void Object::setE(const float e) {
+	e_ = e;
+}
+
+void Object::setTotalId(const uint16_t i) {
+	id_total_ = i;
+}
+
+void Object::setIndex(const int i) {
+	index_ = i;
+}
+
+void Object::setColor(const Color c) {
+	this->color_ = c;
+}
+
+std::string Object::toString()const {
+	return "Object";
 }

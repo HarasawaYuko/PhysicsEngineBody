@@ -1,251 +1,247 @@
 #include "Convex.h"
 #include "Constant.h"
 
+void calculateItensorArea(const std::vector<Vec2>& , float* , float* );
 int partition(std::vector<std::pair<Vec2, float>>& , const int , const int);
 void quick_sort(std::vector<std::pair<Vec2 , float>>& , const int  , const int);
 
 Convex::Convex(const std::vector<Vec2> &points ,const float v_x, const float v_y, const float ang, const float ang_v, const bool act)
-	:Object(Vec2(v_x , v_y), CONVEX, 10.f, COLOR_BLACK, act, ang, ang_v)
+	:Object(Vec2() , Vec2(v_x, v_y), CONVEX, 10.f ,Constant::FRICTION , COLOR_BLACK, act, ang, ang_v)
 {
+	point_num_ = (int)points.size();
+
 	//重心を取得
 	Vec2 cen = Vec2(0, 0);
-	for (int i = 0; i < points.size(); i++) {
-		cen = cen + points[i];
+	for (auto point : points) {
+		cen = cen + point;
 	}
 	cen = cen / (float)points.size();
-	center = cen;
-	pointNum = (int)points.size();
-	//printfDx("重心%s\n" ,center.toString().c_str());
+	center_ = cen;
 	
 	//点を重心からソート
-	std::vector<std::pair<Vec2, float>> pointAng;
+	std::vector<std::pair<Vec2, float>> pairs_point_angle;
 	//点と重心となす角をpairで保存
-	pointAng.push_back(std::make_pair(points[0] , 0));
+	//todo: 0番目の要素をまとめられるか確認する
+	pairs_point_angle.push_back(std::make_pair(points[0] , 0));
 	for (int i = 1; i < points.size(); i++) {
-		pointAng.push_back(std::make_pair(points[i] , getTheta(cen , points[0] , points[i])));
+		float angle = calAngle(cen, points[0], points[i]);
+		pairs_point_angle.push_back(std::make_pair(points[i] , angle));
 	}
-	quick_sort(pointAng , 0 , (int)pointAng.size());
+	//クイックソート
+	quick_sort(pairs_point_angle , 0 , (int)pairs_point_angle.size());
 
 	//ソート順にローカル座標とワールド座標を設定
-	for (int i = 0; i < pointNum; i++) {
-		pointsL.push_back(pointAng[i].first - cen);
-		pointsW.push_back(pointAng[i].first);
-		//printfDx("L %s\n" , pointsL[i].toString().c_str());
+	for (auto pair : pairs_point_angle) {
+		points_local_.push_back(pair.first - center_);
+		points_world_.push_back(pair.first);
 	}
 
 	//慣性テンソルと質量の計算
-	float I = 0.f;
-	float area = 0.f;
-	for (int i = 0; i < pointNum; i++) {
-		Vec2 e0 = pointsL[i];
-		Vec2 e1 = pointsL[(i + 1) % pointNum];
-		float cross = abs(e0.cross(e1));
-		I += (1.f / 12.f) * cross * (e0.squared() + e0.dot(e1) + e1.squared());
-		area += 0.5f * cross;
-	}
-	inertiaTensor = I;
-	mass = area;
-	setBbox();
+	calculateItensorArea(points_local_ , &inertiatensor_ , &mass_ );
 
-	friction = Constant::FRICTION;
+	makeBbox();
 }
 
-void Convex::loadGraph() {
-	//画像のロード、サイズの取得
+//HACK:恐らくない方が良い
+void Convex::operator=(const Convex& con) {
+	this->points_local_ = con.points_local_;
+	this->points_world_ = con.points_world_;
+	this->point_num_ = con.point_num_;
+	this->center_ = con.center_;
+	this->velocity_ = con.velocity_;
+	this->is_active_ = con.is_active_;
+	this->mass_ = con.mass_;
+	this->type_ = con.type_;
+	this->color_ = con.color_;
+	this->index_ = con.index_;
+	this->friction_ = con.friction_;
+	this->e_ = con.e_;
+	this->angle_velocity_rad_ = con.angle_velocity_rad_;
+	this->angle_rad_ = con.angle_rad_;
+	this->inertiatensor_ = con.inertiatensor_;
+	this->bbox_ = con.bbox_;
 }
 
 void Convex::updatePos(const float step) {
 	//動かない物体の場合何もしない
-	if (!active) {
+	if (!is_active_) {
 		return;
 	}
-	Vec2 deltaLinearV = (velocity * step);
-	float deltaRotaV = (angle_v * step);
+
+	const Vec2 deltaLinearV = (velocity_ * step);
+	const float deltaRotaV = (angle_velocity_rad_ * step);
 	if (deltaLinearV.norm() > Constant::STOP_SPEED) {
-		center = center + deltaLinearV;
+		center_ = center_ + deltaLinearV;
 	}
 	if (abs(deltaRotaV) > Constant::STOP_SPEED) {
-		angle = angle + deltaRotaV;
+		angle_rad_ = angle_rad_ + deltaRotaV;
 	}
-	for (int i = 0; i < pointNum; i++) {
-		//ワールド座標に反映
-		pointsW[i] = center + pointsL[i].rotation(angle);
-	}
+	recalWorldPoint();
 	//バウンディングボックスを設定
-	setBbox();
+	makeBbox();
+}
+
+//テスト用描画関数(辺を描画する)
+void Convex::DrawEdge() const {
+	for (int i = 0; i < point_num_; i++) {
+		const Segment edge = getEdgeW(i);
+		DrawSegment(edge, color_);
+	}
 }
 
 void Convex::Draw() const {
-	for (int i = 0; i < pointNum; i++) {
-		Segment edge = getEdgeW(i);
-		DrawSegment(edge, color);
+	for (int i = 0; i < point_num_; i++) {
+		const Segment edge = getEdgeW(i);
+		DrawSegment(edge, color_);
 	}
 }
 
 void Convex::Draw(const int x_scroll , const int y_scroll) const {
-	Vec2 scroll = Vec2((float)x_scroll , (float)y_scroll);
-	for (int i = 0; i < pointNum; i++) {
-		Segment edge = getEdgeW(i);
-		DrawSegment(edge.start + scroll , edge.end + scroll , COLOR_BLACK ,4.f);
-		Vec2 cen = center + scroll;
-		Vec2 sta = edge.start + scroll;
-		DrawTriP(cen, sta ,edge.end + scroll ,color);
-		DrawSegment(cen , cen * 0.01f + sta*0.99f , color , 2.f);
+	const Vec2 scroll = Vec2((float)x_scroll , (float)y_scroll);
+	for (int i = 0; i < point_num_; i++) {
+		const Segment edge = getEdgeW(i);
+		DrawSegment(edge.start_ + scroll , edge.end_ + scroll , COLOR_BLACK ,4.f);
+		const Vec2 cen = center_ + scroll;
+		const Vec2 sta = edge.start_ + scroll;
+		const Vec2 end = edge.end_ + scroll;
+		DrawTriP(cen, sta ,end ,color_);
+		DrawSegment(cen , cen * 0.01f + sta*0.99f , color_ , 2.f);
 	}
 }
 
-//テスト用描画関数(辺を描画する)
-void Convex::DrawEdge() const{
-	for (int i = 0; i < pointNum; i++) {
-		Segment edge = getEdgeW(i);
-		DrawSegment(edge , color);
+//Vec2方向にローカル座標とワールド座標を平行移動する
+void Convex::move(const Vec2 vec) {
+	for (auto& point : points_world_) {
+		point = vec + point;
 	}
+	center_ = center_ + vec;
+	makeBbox();
+}
+
+void Convex::addAngle(const float ang) {
+	angle_rad_ += ang;
+	recalWorldPoint();
+	makeBbox();
 }
 
 void Convex::changeSize(const float area) {
-	float rate = area/mass;
+	float rate = area/mass_;
 	//ローカル座標を変更
-	for (int i = 0; i < pointNum; i++) {
-		pointsL[i] = pointsL[i] * sqrtf(rate);
+	for (auto& local_point : points_local_) {
+		local_point = local_point * sqrtf(rate);
 	}
-	for (int i = 0; i < pointNum; i++) {
-		//ワールド座標に反映
-		pointsW[i] = LtoW(pointsL[i], center, angle);
-	}
-	for (int i = 0; i < pointNum; i++) {
-		//ワールド座標に反映
-		pointsW[i] = LtoW(pointsL[i] , center , angle);
-	}
-	mass = area;
-	//慣性テンソルを計算しなおす
+	//ワールド座標に反映
+	recalWorldPoint();
+
 	//慣性テンソルと質量の計算
-	float I = 0.f;
-	float area_ = 0.f;
-	for (int i = 0; i < pointNum; i++) {
-		Vec2 e0 = pointsL[i];
-		Vec2 e1 = pointsL[(i + 1) % pointNum];
-		float cross = abs(e0.cross(e1));
-		I += (1.f / 12.f) * cross * (e0.squared() + e0.dot(e1) + e1.squared());
-		area_ += 0.5f * cross;
-	}
-	inertiaTensor = I;
-	mass = area_;
-	setBbox();
+	calculateItensorArea(points_local_ , &inertiatensor_ , &mass_ );
+
+	makeBbox();
 
 }
 
 bool Convex::isValid(const int x , const int y) const {
 	//最大値と最小値を取得
-	float max_x = pointsW[0].x, max_y = pointsW[0].y, min_x = pointsW[0].x;
-	for (int i = 1; i < pointNum; i++) {
-		if (pointsW[i].x > max_x) {
-			max_x = pointsW[i].x;
-		}
-		if (pointsW[i].y > max_y) {
-			max_y = pointsW[i].y;
-		}
-		if (pointsW[i].x < min_x) {
-			min_x = pointsW[i].x;
-		}
+	float max_x = FLT_MIN;
+	float max_y = FLT_MIN;
+	float min_x = FLT_MAX;
+	for (auto& point : points_world_) {
+		max_x = max(max_x , point.x_);
+		max_y = max(max_y , point.y_);
+		min_x = min(min_x , point.y_);
 	}
 	//画面外か判定
 	if (max_x < 0.f || max_y < 0.f || min_x > x) {
 		return false;
 	}
-
 	return true;
 }
 
-std::string Convex::toString()const {
-	return "";
-}
-
+//todo: 参照、const参照 にしたほうが良いかもしれない
 Vec2 Convex::getPointW(const int i) const {
-	if (i < 0 || pointNum <= i) {
+	if (i < 0 || i >= point_num_ ) {
 		return Vec2();
 	}
-	return pointsW[i];
+	return points_world_[i];
 }
 
 Vec2 Convex::getPointL(const int i) const {
-	if (i < 0 || pointNum <= i) {
+	if (i < 0 || i >= point_num_) {
 		return Vec2();
 	}
-	return pointsL[i];
-}
-
-int Convex::getPointNum() const {
-	return pointNum;
-}
-
-//Vec2方向にローカル座標とワールド座標を平行移動する
-void Convex::move(const Vec2 vec) {
-	for (int i = 0; i < pointNum; i++) {
-		pointsW[i] = vec + pointsW[i];
-	}
-	center = center + vec;
-	setBbox();
-}
-
-void Convex::rotation(const float ang) {
-	angle += ang;
-	setW();
-	setBbox();
+	return points_local_[i];
 }
 
 //ワールド座標の辺を返す
 Segment Convex::getEdgeW(const int& i) const {
-	return Segment(pointsW[i], pointsW[(i + 1) % pointNum]);
+	if (i < 0 || i >= point_num_) {
+		return Segment();
+	}
+	return Segment(points_world_[i], points_world_[(i + 1) % point_num_]);
 }
 
-void Convex::setBbox() {
-	float xMax = -FLT_MAX;
-	float xMin = FLT_MAX;
-	float yMax = -FLT_MAX;
-	float yMin = FLT_MAX;
-	for (int i = 0; i < pointNum; i++) {
-		xMax = max(xMax , pointsW[i].x);
-		xMin = min(xMin, pointsW[i].x);
-		yMax = max(yMax, pointsW[i].y);
-		yMin = min(yMin, pointsW[i].y);
+const std::vector<Vec2>& Convex::getPointsWorld() {
+	return points_world_;
+}
+
+const std::vector<Vec2>& Convex::getPointsLocal() {
+	return points_local_;
+}
+
+int Convex::getPointNum() const {
+	return point_num_;
+}
+
+void Convex::makeBbox() {
+	float max_x = -FLT_MAX;
+	float min_x = FLT_MAX;
+	float max_y = -FLT_MAX;
+	float min_y = FLT_MAX;
+	for (auto& point : points_world_) {
+		max_x = max(max_x, point.x_);
+		min_x = min(min_x, point.x_);
+		max_y = max(max_y, point.y_);
+		min_y = min(min_y, point.y_);
 	}
-	bbox.point = Vec2(xMin , yMin);
-	bbox.height = yMax - yMin;
-	bbox.width = xMax - xMin;
+
+	bbox_.origin_ = Vec2(min_x , min_y);
+	bbox_.height_ = max_y - min_y;
+	bbox_.width_ = max_x - min_x;
 }
 
 void Convex::setC(const Vec2 c) {
-	center = c;
-	setW();
+	center_ = c;
+	recalWorldPoint();
 }
 
-void Convex::setW() {
+void Convex::recalWorldPoint() {
 	//ワールド座標を設定しなおす
-	for (int i = 0; i < pointNum; i++) {
-		pointsW[i] = center + pointsL[i].rotation(angle);
+	for (int i = 0; i < point_num_; i++) {
+		points_world_[i] = center_ + points_local_[i].rotationCCW(angle_rad_);
 	}
 }
 
-void Convex::operator=(const Convex& con) {
-	this->pointsL = con.pointsL;
-	this->pointsW = con.pointsW;
-	this->pointNum = con.pointNum;
-	this->center = con.center;
-	this->velocity = con.velocity;
-	this->active = con.active;
-	this->mass = con.mass;
-	this->type = con.type;
-	this->color = con.color;
-	this->index = con.index;
-	this->friction = con.friction;
-	this->e = con.e;
-	this->angle_v = con.angle_v;
-	this->angle = con.angle;
-	this->inertiaTensor = con.inertiaTensor;
-	this->bbox = con.bbox;
-}
-
 /*************************************************/
+
+//原点に対する凸包の慣性テンソルを計算する
+//pointsはローカル座標
+void calculateItensorArea(const std::vector<Vec2>& points , float* I , float* mass) {
+	float result_I = 0.f;
+	float result_mass = 0.f;
+	int point_num = points.size();
+	for (int i = 0; i < point_num ; i++) {
+		Vec2 e0 = points[i];
+		Vec2 e1 = points[(i + 1) % point_num];
+		float cross = abs(e0.cross(e1));
+		//慣性テンソルの公式を適用
+		// 1/12 * |e_0 × e_1| * (e_0^2 + e_0*e_1 * e_1^2)
+		result_I += (1.f / 12.f) * cross * (e0.normSquared() + e0.dot(e1) + e1.normSquared());
+		//面積
+		result_mass += 0.5f * cross;
+	}
+	*I = result_I;
+	*mass = result_mass;
+}
 
 //クイックソートに用いるパーテーション
 int partition(std::vector<std::pair<Vec2, float>>& v, const int s, const int e) {
