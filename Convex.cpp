@@ -228,7 +228,7 @@ void Convex::recalWorldPoint() {
 void calculateItensorArea(const std::vector<Vec2>& points , float* I , float* mass) {
 	float result_I = 0.f;
 	float result_mass = 0.f;
-	int point_num = points.size();
+	const int point_num = (int)points.size();
 	for (int i = 0; i < point_num ; i++) {
 		Vec2 e0 = points[i];
 		Vec2 e1 = points[(i + 1) % point_num];

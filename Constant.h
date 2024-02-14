@@ -12,4 +12,5 @@ public:
 	static float FRICTION;
 	//îΩî≠åWêî
 	static float RESTITUTION;
+	static float JUDGE_SAME_POINT;
 };

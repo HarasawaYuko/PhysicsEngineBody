@@ -2,7 +2,7 @@
 #include "Constant.h"
 
 Circle::Circle(const float cen_x, const float cen_y, const float r, const float v_x, const float v_y , const bool act) 
-	:r_(r) , Object(Vec2(cen_x , cen_y) , Vec2(v_x , v_y), CIRCLE, ( r * r * M_PI), Constant::FRICTION ,COLOR_RED, act)
+	:r_(r) , Object(Vec2(cen_x , cen_y) , Vec2(v_x , v_y), CIRCLE, ( r * r * kPi), Constant::FRICTION ,COLOR_RED, act)
 {
 	makeBbox();
 	inertiatensor_ = 0.5f * mass_ * r * r;
