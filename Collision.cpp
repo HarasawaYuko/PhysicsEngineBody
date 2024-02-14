@@ -8,6 +8,7 @@ Collision::Collision(Object* obj1 , Object* obj2 )
 	:contact_num_(0) , obj1_(obj1) , obj2_(obj2)
 {}
 
+//もっと良い実装方法がありそう
 void Collision::addCp(ContactPoint add_point) {
 	//既存の衝突点と同じ点であれば、それを更新する
 	const float kSamePoint = Constant::JUDGE_SAME_POINT;//同じ点と見なせる範囲
